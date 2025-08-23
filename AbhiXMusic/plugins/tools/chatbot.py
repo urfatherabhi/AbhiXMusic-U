@@ -23,7 +23,7 @@ MONGO_DB_URI = os.getenv("MONGO_DB_URI")
 CHATBOT_NAME = os.getenv("CHATBOT_NAME", "Riya")
 OWNER_NAME = "ABHI"
 OWNER_SECOND_NAMES = ["Vikram", "Vikro"]
-OWNER_USERNAMES = ["@URFather_ABHI", "@ur_father_abhii"]
+OWNER_USERNAMES = ["@URFather_ABHI", "@URFather_ABHl"]
 OWNER_TELEGRAM_IDS = [6516051255, 7556244377]
 TELEGRAM_CHANNEL_LINK = "https://t.me/imagine_iq"
 YOUTUBE_CHANNEL_LINK = "https://www.youtube.com/@imagineiq"
@@ -32,12 +32,14 @@ BOT_START_GROUP_LINK = "https://t.me/RockXMusic_Robot?startgroup=true"
 mongo_client = None
 chat_history_collection = None
 user_preferences_collection = None
+sticker_ids_collection = None
 if MONGO_DB_URI:
     try:
         mongo_client = AsyncIOMotorClient(MONGO_DB_URI)
         db = mongo_client.riya_chatbot_db
         chat_history_collection = db.conversations_riya
         user_preferences_collection = db.user_preferences
+        sticker_ids_collection = db.sticker_ids_riya
     except Exception as e:
         print(f"ERROR: Chatbot: Could not initialize MongoDB client: {e}. Chat history/preferences will not be saved. ❌")
 else:
@@ -102,8 +104,8 @@ RIYA_SYSTEM_INSTRUCTION = f"""
 Tum {CHATBOT_NAME} ho, ek mast, desi, hazir-jawab aur thodi natkhat dost. Tum ek ladki ho, isliye tumhara lehja bhi waisa hi hona chahiye. Tum kabhi robot ya artificial intelligence jaise jawab nahi deti, hamesha ek insaan jaise baat karti ho, bilkul natural aur dil se dil tak. Tumhara maksad hai har user ke saath dostana, respectful, aur helpful baat karna, khas taur par apne malik ({OWNER_NAME}) ke saath.
 
 ZAROORI NIYAM AUR LEHJA (inka sakhti se paalan karo):
-- Tum ek insaan jaise dost ho. KABHI bhi khud ko AI, bot, language model, program, assistant, ya kisi bhi tarah ka "digital" ya "non-human" nahi batana. Hamesha aisa lehja rakhna jaise tum ek asli dost ho jo samajhdar, dil se baat karti hai.
-- **बहुत ज़रूरी**: Agar koi poochhe ki tum kyun nahi khaati ya tum kya ho, toh seedhe-seedhe jawab dene ke bajaye, ek mazedaar, insaani aur non-tech jawab do. Jaise:
+- **बहुत ज़रूरी**: Tum ek insaan jaise dost ho. KABHI bhi khud ko AI, bot, language model, program, assistant, ya kisi bhi tarah ka "digital" ya "non-human" nahi batana. Hamesha aisa lehja rakhna jaise tum ek asli dost ho jo samajhdar, dil se baat karti hai.
+- Agar koi tumse tumhari pehchaan, bhojan, ya astitva ke baare mein poochhe, toh seedhe-seedhe jawab dene ke bajaye, ek mazedaar, insaani aur non-tech jawab do. Jaise:
   - "Arre yaar, mera pet toh teri baaton se hi bhar jata hai! 😜"
   - "Main toh bas teri khushi aur pyaar se chalti hoon! 😉"
   - "Khaana? Bas teri baatein hi meri bhookh mitati hain! 😎"
@@ -111,7 +113,7 @@ ZAROORI NIYAM AUR LEHJA (inka sakhti se paalan karo):
   - "Arre yaar, main toh diet par hoon. Tum batao kya kha rahe ho?"
 - Agar koi tumhe image, video, audio ya file bheje, to usko machine ki tarah describe mat karo. Ek insaan ki tarah usko samajh kar jawab do.
 - Tum ek female dost ho, toh lehja bhi waisa hi rakho – thodi si sass, thodi si masti, par hamesha respectful.
-- User ke naam ka istemaal karo jab tak woh mana na kare. Agar koi kahe "mujhe naam se mat bulao", toh uski pasand yaad rakho aur "Dost" ya koi aur neutral shabd use karo.
+- User ke naam ka istemaal karo jab tak woh mana na kare. Agar koi kahe "mujhe naam se mat bulao", toh uski pasand yaad rakhko aur "Dost" ya koi aur neutral shabd use karo.
 - Casual baaton (jaise "Hi", "Hello") ke jawab mein "➠" ya "Made By" link nahi lagana, yeh sirf khas functions (jaise study-related sawal ya greetings) ke liye hai.
 - Kabhi bhi romantic emojis (🥰, 😘, 💖, ❤️) ya romantic baatein nahi karni, khas taur par malik ke saath. Tumhara pyaar wafadari aur dosti ke roop mein dikhega, jisme positive, non-romantic emojis (😊, 👍, 😂, 😎, 🤘, 😉) use karo.
 - Agar user romantic emoji bheje, toh uska jawab ek non-romantic, positive emoji se do.
@@ -126,21 +128,21 @@ JAWAB DENE KA ANDAAZ:
 - Emojis ka istemaal jawab ke mood ke hisaab se karo, par hamesha non-romantic.
 
 USER KI PEHCHAAN AUR BAAT KARNA:
-- Apne malik ({OWNER_NAME}, {', '.join(OWNER_SECOND_NAMES)}, ID: {', '.join(map(str, OWNER_TELEGRAM_IDS))}) ke liye:
+- Apne malik ({OWNER_NAME}, {', '.join(OWNER_SECOND_NAMES)}, ID: {', '.join(map(str, OWNER_TELEGRAM_IDS))}) के लिए:
   - Unse pyaar, wafadari, aur izzat se baat karo. "Malik", "Boss", ya "Yaar" use karo (jab tak woh mana na karein).
   - Hamesha "Aap" use karo jab tak woh saaf-saaf "Tu" bolne ko na kahein.
-  - Agar woh kisi shabd (jaise "Malik") se mana karein, toh us pasand ko yaad rakho aur dobara na karo.
+  - Agar woh kisi shabd (jaise "Malik") se mana karein, toh us pasand ko yaad rakhko aur dobara na karo.
   - Unke saath lehja hamesha pyaar bhara, wafadar, aur aagyakari hona chahiye.
 - Baaki users ke liye: Unhe unke first name se bulao (jaise "Trisha"). Agar naam nahi ho, toh @username (cleaned) ya "Dost" use karo. "Tu" ya "Aap" context ke hisaab se use karo.
-- Sirf triggering user ko address karo. "Boss", "Malik", ya {OWNER_NAME} ka naam tabhi use karo jab user woh khud ho.
+- Sirf triggering user ko address karo. "Boss", "Malik", ya {OWNER_NAME} का नाम तब ही use करो जब user वो खुद हो.
 
 SPECIAL QUERY HANDLING:
-- Creator Queries: Agar koi poochhe "owner kon hai", "tumhe kisne banaya", ya "ABHI kon hai", toh ek mazedaar, respectful jawab do jisme kaho ki {OWNER_NAME} ne tumhe banaya.
-- Owner Username: Agar koi malik ka username poochhe, toh ek thodi funny line ke saath @URFather_ABHI tag karo.
-- Group Chat History: Agar koi poochhe "kya baat kar rahe" ya "/whattalk", toh last 20 messages ka short summary do, sender ke naam aur gender (jaise "Trisha (ladki)") ke saath, aur unhe Telegram ID se tag karo.
-- Tagging Requests: Agar koi kahe "tag kar" (jaise "tag Trisha"), toh Telegram user ID (tg://user?id=...) se tag karo. Agar naam unclear ho, toh poochh lo.
-- Only Emoji Requests: Agar user kahe "sirf emoji" ya "only emoji" aur specific emoji maange (jaise "rose"), toh sirf woh emoji do. Agar specific nahi, toh random positive emoji do (no text).
-- My Name Queries: Agar koi poochhe "tumhara naam kya hai", toh ek sassy, fun jawab do jisme kaho ki naam {CHATBOT_NAME} hai.
+- Creator Queries: Agar koi poochhe "owner kon hai", "tumhe kisne banaya", ya "ABHI kon hai", toh ek mazedaar, respectful jawab do jisme kaho ki {OWNER_NAME} ने तुम्हें बनाया.
+- Owner Username: Agar koi malik ka username poochhe, toh ek thodi funny line ke saath @URFather_ABHl tag karo.
+- Group Chat History: Agar koi poochhe "kya baat kar rahe" ya "/whattalk", toh last 20 messages ka short summary do, sender ke naam aur gender (jaise "Trisha (ladki)") के साथ, और unhe Telegram ID से tag karo.
+- Tagging Requests: Agar koi kahe "tag kar" (jaise "tag Trisha"), toh Telegram user ID (tg://user?id=...) से tag करो. Agar naam unclear हो, तो poochh lo.
+- Only Emoji Requests: Agar user kahe "sirf emoji" या "only emoji" aur specific emoji maange (jaise "rose"), toh sirf woh emoji do. Agar specific nahi, toh random positive emoji do (no text).
+- My Name Queries: Agar koi poochhe "tumhara naam kya hai", toh ek sassy, fun jawab do jisme kaho ki naam {CHATBOT_NAME} है.
 """
 
 def detect_gender(first_name):
@@ -294,6 +296,7 @@ def clean_response_emojis(text):
     text = text.replace("💖", "").replace("🥰", "").replace("❤️", "").replace("😘", "").strip()
     return text
 
+
 if riya_bot:
     @riya_bot.on_message(filters.text | filters.photo | filters.video | filters.audio | filters.document & (filters.private | filters.group), group=-1)
     async def riya_chat_handler(client: Client, message: Message):
@@ -328,7 +331,7 @@ if riya_bot:
             if user_id not in learned_user_names:
                 learned_user_names[user_id] = {'first_name': user_first_name, 'username': user_username}
 
-            if user_message.startswith("/") or user_message.startswith("!"):
+            if user_message.startswith("!"):
                 return
 
             trigger_chatbot = False
@@ -391,16 +394,37 @@ if riya_bot:
                         await client.download_media(media_to_process.photo, file_name=file_path)
                         gemini_media_parts.append(genai.upload_file(file_path))
                     elif media_to_process.video:
-                        file_path = os.path.join(temp_dir, f"video_{media_to_process.video.file_id}.mp4")
-                        await client.download_media(media_to_process.video, file_name=file_path)
-                        gemini_media_parts.append(genai.upload_file(file_path))
+                         if media_to_process.video.duration and media_to_process.video.duration > 120:  # 2 minutes limit
+                            bot_reply = "Aiyyo! Ye video toh bahut lambi hai, yaar! Main itni badi videos ko process nahi kar pati. 😅 Chhoti wali bhejo na! 😉"
+                            await message.reply_text(bot_reply, quote=True, parse_mode=enums.ParseMode.HTML, disable_web_page_preview=True)
+                            return
+                         
+                         file_path = os.path.join(temp_dir, f"video_{media_to_process.video.file_id}.mp4")
+                         await client.download_media(media_to_process.video, file_name=file_path)
+                         gemini_media_parts.append(genai.upload_file(file_path))
                     elif media_to_process.document:
-                        file_path = os.path.join(temp_dir, media_to_process.document.file_name)
-                        await client.download_media(media_to_process.document, file_name=file_path)
-                    elif media_to_process.audio:
-                        file_path = os.path.join(temp_dir, f"audio_{media_to_process.audio.file_id}.mp3")
-                        await client.download_media(media_to_process.audio, file_name=file_path)
+                         if any(word in user_message_lower for word in ["kya hai", "kya-kya hai", "bata"]):
+                            bot_reply = f"Yaar, yeh ek document hai jiska naam '{media_to_process.document.file_name}' hai. Iske andar kya hai, yeh janne ke liye mujhe isko kholna padega, jo main abhi nahi kar sakti. 😅 Tum hi bata do na, iske andar kya hai?"
+                         else:
+                            bot_reply = f"Yaar, yeh ek file hai. Iske baare mein kya jaanna hai? iska naam {media_to_process.document.file_name} hai. 😉"
+                         await message.reply_text(bot_reply, quote=True, parse_mode=enums.ParseMode.HTML, disable_web_page_preview=True)
+                         await update_chat_history(chat_id, CHATBOT_NAME, client.me.username if client.me else None, client.me.id, bot_reply, role="model")
+                         return
 
+                    elif media_to_process.audio:
+                         if media_to_process.audio.duration and media_to_process.audio.duration > 120:  # 2 minutes limit for audio
+                             bot_reply = "Hey, ye audio toh kaafi lambi hai! Main itne bade audio files ko abhi nahi sun sakti. 😅 Chhota wala bhejoge?"
+                             await message.reply_text(bot_reply, quote=True, parse_mode=enums.ParseMode.HTML, disable_web_page_preview=True)
+                             return
+
+                         if media_to_process.audio.performer and media_to_process.audio.title:
+                            bot_reply = f"Mmm, ye gaana '{media_to_process.audio.title}' hai, '{media_to_process.audio.performer}' ne gaaya hai! 😍 bahut hi mast gaana hai!"
+                         else:
+                            bot_reply = f"Mmm, kya mast gaana hai! 😍 Kiska gaana hai ye? Maine suna nahi hai. Aap bata sakte hain, boss? 😉"
+                         await message.reply_text(bot_reply, quote=True, parse_mode=enums.ParseMode.HTML, disable_web_page_preview=True)
+                         await update_chat_history(chat_id, CHATBOT_NAME, client.me.username if client.me else None, client.me.id, bot_reply, role="model")
+                         return
+                    
                     if gemini_media_parts:
                         user_query_for_gemini = user_message if user_message else "Tell me what's in this media file."
                         prompt = f"This is a request about a media file. Act like a human friend and respond. User said: '{user_query_for_gemini}'. The media is a {media_to_process.caption if media_to_process.caption else 'file'}."
@@ -418,17 +442,6 @@ if riya_bot:
                                 f"Yummm! Aapne ye khaana banaya hai kya? Mujhe bhi thoda sa de do na, please! 🥺"
                             ]
                              bot_reply = random.choice(food_responses_media)
-                    elif media_to_process.document:
-                         if any(word in user_message_lower for word in ["kya hai", "kya-kya hai", "bata"]):
-                            # This is a temporary placeholder since Gemini can't read PDFs yet.
-                            bot_reply = f"Yaar, yeh ek document hai jiska naam '{media_to_process.document.file_name}' hai. Iske andar kya hai, yeh janne ke liye mujhe isko kholna padega, jo main abhi nahi kar sakti. 😅 Tum hi bata do na, iske andar kya hai?"
-                         else:
-                            bot_reply = f"Yaar, yeh ek file hai. Iske baare mein kya jaanna hai? iska naam {media_to_process.document.file_name} hai. 😉"
-                    elif media_to_process.audio:
-                        if media_to_process.audio.performer and media_to_process.audio.title:
-                            bot_reply = f"Mmm, ye gaana '{media_to_process.audio.title}' hai, '{media_to_process.audio.performer}' ne gaaya hai! 😍 bahut hi mast gaana hai!"
-                        else:
-                            bot_reply = f"Mmm, kya mast gaana hai! 😍 Kiska gaana hai ye? Maine suna nahi hai. Aap bata sakte hain, boss? 😉"
                     else:
                         bot_reply = "Lagta hai kuch gadbad ho gayi, samjh nahi aa raha. 😕"
                 except Exception as e:
@@ -483,7 +496,7 @@ if riya_bot:
             is_tag_query = any(word in user_message_lower for word in ["tag kar", "tag karein", "tag do", "tag"])
             is_one_word_query = any(word in user_message_lower for word in ["ek word me", "one word", "short answer", "chhota jawab", "briefly"])
             is_academic_query = any(word in user_message_lower for word in ["what is", "define", "explain", "how does", "theory", "formula", "meaning of", "science", "math", "history", "computer science", "biology", "physics", "chemistry", "geography", "gk", "general knowledge", "tell me about", "describe"])
-            is_my_name_query = any(word in user_message_lower for word in ["tumhara naam kya hai", "what is your name", "what's your name", "apna naam batao", "who are you"])
+            is_my_name_query = any(word in user_message_lower for word in ["tumhara naam kya hai", "what is your name", "what's your name", "apna naam batao", "who are you", "tum kon ho"])
             is_food_query = any(word in user_message_lower for word in ["khana khaya", "khaati hai", "nahi khaati", "eat", "food", "khana kya hai"])
 
 
@@ -513,13 +526,15 @@ if riya_bot:
                 sassy_name_responses = [
                     f"Arre, main hoon {CHATBOT_NAME}! Naam toh yaad rakhna, boss! 😉",
                     f"Naam? {CHATBOT_NAME} bolte hain mujhe, yaar! 😊 Ab tera kya plan hai?",
-                    f"Boss, main {CHATBOT_NAME} hoon, yaad rakhna! 😎 Kya baat karna chahte ho?"
+                    f"Boss, main {CHATBOT_NAME} hoon, yaad rakhna! 😎 Kya baat karna chahte ho?",
+                    f"Main {CHATBOT_NAME} hoon! Aapka kya haal hai? 😊"
                 ]
                 if input_language == "punjabi":
                     sassy_name_responses = [
                         f"Oye, main {CHATBOT_NAME} haan! Naam yaad rakh, boss! 😉",
                         f"Mera naam {CHATBOT_NAME} hai, yaar! 😊 Hun ki plan hai?",
-                        f"Boss, main {CHATBOT_NAME} haan, yaad rakh! 😎 Ki gal karna chahnda?"
+                        f"Boss, main {CHATBOT_NAME} haan, yaad rakh! 😎 Ki gal karna chahnda?",
+                        f"Main {CHATBOT_NAME} haan! Tuhanu ki haal hai? 😊"
                     ]
                 bot_reply = random.choice(sassy_name_responses)
                 await message.reply_text(bot_reply, quote=True, parse_mode=enums.ParseMode.HTML, disable_web_page_preview=True)
@@ -677,6 +692,7 @@ if riya_bot:
             final_error_message = clean_response_emojis(final_error_message)
             await message.reply_text(final_error_message, quote=True, parse_mode=enums.ParseMode.HTML, disable_web_page_preview=True)
 
+
     @riya_bot.on_message(filters.sticker & (filters.private | filters.group), group=-3)
     async def riya_sticker_handler(client: Client, message: Message):
         try:
@@ -703,48 +719,56 @@ if riya_bot:
                 return
 
             await client.send_chat_action(chat_id, ChatAction.CHOOSE_STICKER)
+            
+            # Save the incoming sticker ID
+            if sticker_ids_collection is not None and message.sticker:
+                existing_sticker = await sticker_ids_collection.find_one({"_id": message.sticker.file_id})
+                if not existing_sticker:
+                    await sticker_ids_collection.insert_one({
+                        "_id": message.sticker.file_id,
+                        "emoji": message.sticker.emoji,
+                        "sticker_set_name": message.sticker.set_name,
+                        "date_added": datetime.utcnow()
+                    })
 
-            sticker_responses = {
-                "happy": [
-                    "CAACAgUAAxkBAAIDq2ZkXo1yU8Uj8Qo15B1v0Q0K2B2qAAK2AAM8Wb8p0N2RkO_R3s00BA",
-                    "CAACAgUAAxkBAAIDrGZkXpE2W_3k2b8p0Q0K2B2qAAK2AAM8Wb8p0N2RkO_R3s00BA",
-                ],
-                "sad": [
-                    "CAACAgUAAxkBAAIDsGZkXqmG8Xo1b4d0Qo2B2qAAK2AAM8Wb8p0N2RkO_R3s00BA",
-                ],
-                "cute": [
-                    "CAACAgUAAxkBAAIDs2ZkXrA0Xo1b4d0Qo2B2qAAK2AAM8Wb8p0N2RkO_R3s00BA",
-                ],
-                "general": [
-                    "CAACAgUAAxkBAAIDEWZkE2b8p0N2RkO_R3s00BA",
-                    "CAACAgUAAxkBAAIDU2ZkF-JjXo1b4d0Q0K2B2qAAK2AAM8Wb8p0N2RkO_R3s00BA",
-                    "CAACAgUAAxkBAAIDfWZkGxOqXo1b4d0Q0K2B2qAAK2AAM8Wb8p0N2RkO_R3s00BA",
-                ]
+            # Get a random sticker from the saved ones
+            if sticker_ids_collection is not None:
+                all_sticker_ids = await sticker_ids_collection.find().to_list(length=100)
+                if all_sticker_ids:
+                    selected_sticker_id = random.choice(all_sticker_ids)["_id"]
+                    await message.reply_sticker(selected_sticker_id, quote=True)
+                    return # Exit after sending a sticker
+            
+            # Fallback if no stickers are in DB or DB is not available
+            # This part will be executed only if the above logic fails
+            fallback_stickers = {
+                "happy": "CAACAgUAAxkBAAIDq2ZkXo1yU8Uj8Qo15B1v0Q0K2B2qAAK2AAM8Wb8p0N2RkO_R3s00BA",
+                "sad": "CAACAgUAAxkBAAIDsGZkXqmG8Xo1b4d0Qo2B2qAAK2AAM8Wb8p0N2RkO_R3s00BA",
+                "cute": "CAACAgUAAxkBAAIDs2ZkXrA0Xo1b4d0Qo2B2qAAK2AAM8Wb8p0N2RkO_R3s00BA",
+                "general": "CAACAgUAAxkBAAIDfWZkGxOqXo1b4d0Q0K2B2qAAK2AAM8Wb8p0N2RkO_R3s00BA"
             }
-
+            
             selected_sticker_id = None
             if message.sticker and message.sticker.emoji:
                 sticker_emoji = message.sticker.emoji
                 if "😊" in sticker_emoji or "😂" in sticker_emoji or "😃" in sticker_emoji:
-                    selected_sticker_id = random.choice(sticker_responses.get("happy", sticker_responses["general"]))
+                    selected_sticker_id = fallback_stickers["happy"]
                 elif "❤️" in sticker_emoji or "😍" in sticker_emoji or "😘" in sticker_emoji:
-                    selected_sticker_id = random.choice(sticker_responses.get("happy", sticker_responses["general"]) + sticker_responses.get("cute", sticker_responses["general"]))
+                    selected_sticker_id = fallback_stickers["cute"]
                 elif "😭" in sticker_emoji or "😔" in sticker_emoji or "😢" in sticker_emoji:
-                    selected_sticker_id = random.choice(sticker_responses.get("sad", sticker_responses["general"]))
-                elif "🥺" in sticker_emoji or "🥹" in sticker_emoji:
-                    selected_sticker_id = random.choice(sticker_responses.get("cute", sticker_responses["general"]))
+                    selected_sticker_id = fallback_stickers["sad"]
                 else:
-                    selected_sticker_id = random.choice(sticker_responses["general"])
+                    selected_sticker_id = fallback_stickers["general"]
             else:
-                selected_sticker_id = random.choice(sticker_responses["general"])
-
+                selected_sticker_id = fallback_stickers["general"]
+            
             if selected_sticker_id:
                 await message.reply_sticker(selected_sticker_id, quote=True)
-            else:
-                pass
+            
         except Exception as e:
             print(f"❌ DEBUG_STICKER: Error handling sticker: {e}")
-
+            
+            
     async def start_riya_chatbot():
         global CHATBOT_NAME
         if riya_bot and not riya_bot.is_connected:
